@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const DOWNLOAD_URL = 'https://github.com/electron/electron/releases/download'
+const DOWNLOAD_URL = 'https://github.com/metrica-sports/electron-npm/releases/download'
 
 const extract = require('extract-zip');
 
