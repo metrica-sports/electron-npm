@@ -12,12 +12,17 @@ const https = require('https');
 const { version } = require('./package');
 
 if (process.env.ELECTRON_SKIP_BINARY_DOWNLOAD) {
+  console.log('Skipping download of Electron binary because ELECTRON_SKIP_BINARY_DOWNLOAD is set');
   process.exit(0);
 }
 
 const platformPath = getPlatformPath();
+const distPath = process.env.ELECTRON_OVERRIDE_DIST_PATH || path.join(__dirname, 'dist');
+const electronPath = path.join(distPath, platformPath);
+console.log(`Paths:\n- distPath=${distPath}\n- platformPath=${platformPath}\n- electronPath=${electronPath}`);
 
 if (isInstalled()) {
+  console.log('Electron binary already installed, skipping download');
   process.exit(0);
 }
 
@@ -129,7 +134,11 @@ function downloadWithRedirects(url, targetPath, fileStream, redirectCount = 0) {
 
 function isInstalled() {
   try {
-    if (fs.readFileSync(path.join(__dirname, 'dist', 'version'), 'utf-8').replace(/^v/, '') !== version) {
+    if (!fs.existsSync(path.join(__dirname, 'electron.d.ts'))) {
+      return false;
+    }
+
+    if (fs.readFileSync(path.join(distPath, 'version'), 'utf-8').replace(/^v/, '') !== version) {
       return false;
     }
 
@@ -140,23 +149,18 @@ function isInstalled() {
     return false;
   }
 
-  const electronPath = process.env.ELECTRON_OVERRIDE_DIST_PATH || path.join(__dirname, 'dist', platformPath);
-
   return fs.existsSync(electronPath);
 }
 
 // unzips and makes path.txt point at the correct executable
 function extractFile(zipPath) {
   console.log('Extracting zip file ' + zipPath);
-  const distPath = process.env.ELECTRON_OVERRIDE_DIST_PATH || path.join(__dirname, 'dist');
 
-  return extract(zipPath, { dir: path.join(__dirname, 'dist') }).then(() => {
-    // If the zip contains an "electron.d.ts" file,
-    // move that up
+  return extract(zipPath, { dir: distPath }).then(() => {
+    // If the zip contains an "electron.d.ts" file, move that up
     const srcTypeDefPath = path.join(distPath, 'electron.d.ts');
     const targetTypeDefPath = path.join(__dirname, 'electron.d.ts');
     const hasTypeDefinitions = fs.existsSync(srcTypeDefPath);
-
     if (hasTypeDefinitions) {
       fs.renameSync(srcTypeDefPath, targetTypeDefPath);
     }
